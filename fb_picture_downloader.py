@@ -15,7 +15,9 @@ PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
 
 options = webdriver.ChromeOptions()
 
+# Separate Selenium profile
 options.add_argument(r"--user-data-dir=C:\selenium_profile")
+
 options.add_argument("--start-maximized")
 
 driver = webdriver.Chrome(
@@ -45,102 +47,142 @@ print("Opened photos page")
 time.sleep(10)
 
 # ----------------------------
-# Scroll and Collect Images
+# Scroll and Collect Photo Links
 # ----------------------------
 
-image_urls = set()
+photo_links = set()
 
 last_height = driver.execute_script(
     "return document.body.scrollHeight"
 )
 
-for i in range(30):
+MAX_SCROLLS = 300
 
-    print(f"\nScroll {i+1}")
+for i in range(MAX_SCROLLS):
 
+    print(f"\nScroll {i+1}/{MAX_SCROLLS}")
+
+    # Scroll down
     driver.execute_script(
         "window.scrollTo(0, document.body.scrollHeight);"
     )
 
     time.sleep(5)
 
-    images = driver.find_elements(By.TAG_NAME, "img")
+    anchors = driver.find_elements(By.TAG_NAME, "a")
 
-    print(f"Found {len(images)} images")
+    print(f"Found {len(anchors)} anchors")
 
-    for img in images:
+    for a in anchors:
 
-        src = img.get_attribute("src")
+        href = a.get_attribute("href")
 
-        if src:
+        if (
+            href and
+            "fbid=" in href and
+            "facebook.com/photo" in href
+        ):
 
-            # skip tiny icons/profile pics
-            if "scontent" in src:
+            href = href.split("&")[0]
 
-                image_urls.add(src)
+            photo_links.add(href)
 
-    print(f"Collected {len(image_urls)} image URLs")
+    print(f"Collected {len(photo_links)} unique photo links")
 
+    # Detect end of page
     new_height = driver.execute_script(
         "return document.body.scrollHeight"
     )
 
     if new_height == last_height:
 
-        print("Reached end")
+        print("Reached end of page")
         break
 
     last_height = new_height
 
-driver.quit()
-
 # ----------------------------
-# Download Images
+# Prepare Download Folder
 # ----------------------------
 
 os.makedirs("downloads", exist_ok=True)
 
-print("\nStarting downloads...")
+downloaded_files = set(os.listdir("downloads"))
 
-for url in image_urls:
+print(f"\nStarting download of {len(photo_links)} photos...")
+
+# ----------------------------
+# Open Each Photo Page
+# ----------------------------
+
+for idx, photo_url in enumerate(photo_links):
 
     try:
 
-        response = requests.get(url, timeout=15)
+        print(f"\n[{idx+1}/{len(photo_links)}]")
+
+        # Extract FBID
+        fbid = photo_url.split("fbid=")[1].split("&")[0]
+
+        filename = f"{fbid}.jpg"
+
+        # Skip existing
+        if filename in downloaded_files:
+
+            print(f"Skipping existing: {filename}")
+            continue
+
+        # Open photo page
+        driver.get(photo_url)
+
+        time.sleep(4)
+
+        images = driver.find_elements(By.TAG_NAME, "img")
+
+        best_url = None
+
+        # Find highest quality image
+        for img in images:
+
+            src = img.get_attribute("src")
+
+            if src and "scontent" in src:
+
+                # choose longest URL (usually highest quality)
+                if not best_url or len(src) > len(best_url):
+
+                    best_url = src
+
+        if not best_url:
+
+            print("No valid image found")
+            continue
+
+        # Download image
+        response = requests.get(best_url, timeout=20)
 
         if response.status_code == 200:
 
-            # ----------------------------
-            # Extract Facebook media ID
-            # ----------------------------
+            filepath = os.path.join("downloads", filename)
 
-            filename_id = None
+            with open(filepath, "wb") as f:
 
-            parts = url.split("/")
-
-            for part in parts:
-
-                if part.isdigit() and len(part) > 8:
-                    filename_id = part
-                    break
-
-            # fallback
-            if not filename_id:
-                filename_id = str(abs(hash(url)))
-
-            filename = f"downloads/{filename_id}.jpg"
-
-            # ----------------------------
-            # Save Image
-            # ----------------------------
-
-            with open(filename, "wb") as f:
                 f.write(response.content)
 
-            print(f"Downloaded {filename}")
+            print(f"Downloaded: {filename}")
+
+        else:
+
+            print(f"HTTP Error: {response.status_code}")
 
     except Exception as e:
 
         print(f"Failed: {e}")
+
+# ----------------------------
+# Cleanup
+# ----------------------------
+
+#driver.quit()
 
 print("\nDone.")
