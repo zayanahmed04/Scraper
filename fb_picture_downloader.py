@@ -34,7 +34,7 @@ print("Chrome launched")
 driver.get("https://facebook.com")
 
 print("Login manually")
-input("After login press ENTER...")
+time.sleep(20)
 
 # ----------------------------
 # Open Photos Page
@@ -183,6 +183,6 @@ for idx, photo_url in enumerate(photo_links):
 # Cleanup
 # ----------------------------
 
-#driver.quit()
+driver.quit()
 
 print("\nDone.")
