@@ -34,7 +34,7 @@ print("Chrome launched")
 driver.get("https://facebook.com")
 
 print("Login manually")
-time.sleep(20)
+time.sleep(7)
 
 # ----------------------------
 # Open Photos Page
@@ -52,26 +52,36 @@ time.sleep(10)
 
 photo_links = set()
 
-last_height = driver.execute_script(
-    "return document.body.scrollHeight"
-)
+same_height_count = 0
 
-MAX_SCROLLS = 300
+last_height = 0
 
-for i in range(MAX_SCROLLS):
+scroll_round = 0
 
-    print(f"\nScroll {i+1}/{MAX_SCROLLS}")
+print("\nScrolling deeply into Facebook photos...\n")
 
-    # Scroll down
-    driver.execute_script(
-        "window.scrollTo(0, document.body.scrollHeight);"
-    )
+while True:
 
+    scroll_round += 1
+
+    print(f"\nScroll Round {scroll_round}")
+
+    # gradual scrolling
+    for _ in range(20):
+
+        driver.execute_script(
+            "window.scrollBy(0, 1200);"
+        )
+
+        time.sleep(1.5)
+
+    # extra wait for FB lazy loading
     time.sleep(5)
 
+    # collect links
     anchors = driver.find_elements(By.TAG_NAME, "a")
 
-    print(f"Found {len(anchors)} anchors")
+    added_this_round = 0
 
     for a in anchors:
 
@@ -85,22 +95,42 @@ for i in range(MAX_SCROLLS):
 
             href = href.split("&")[0]
 
-            photo_links.add(href)
+            if href not in photo_links:
 
-    print(f"Collected {len(photo_links)} unique photo links")
+                photo_links.add(href)
+                added_this_round += 1
 
-    # Detect end of page
+    print(f"Added this round: {added_this_round}")
+    print(f"Total collected: {len(photo_links)}")
+
+    # get new height
     new_height = driver.execute_script(
         "return document.body.scrollHeight"
     )
 
+    print(f"Current height: {new_height}")
+
+    # Facebook often pauses height growth temporarily
     if new_height == last_height:
 
-        print("Reached end of page")
-        break
+        same_height_count += 1
+
+        print(
+            f"No height increase "
+            f"({same_height_count}/10)"
+        )
+
+    else:
+
+        same_height_count = 0
 
     last_height = new_height
 
+    # only stop after MANY stagnant checks
+    if same_height_count >= 10:
+
+        print("\nReached probable absolute end")
+        break
 # ----------------------------
 # Prepare Download Folder
 # ----------------------------
