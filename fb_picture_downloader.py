@@ -6,6 +6,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import requests
 import time
 import os
+import json
 
 PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
 
@@ -46,16 +47,31 @@ print("Opened photos page")
 
 time.sleep(10)
 
+LINKS_FILE = "photo_links.json"
+
+# ----------------------------
+# Load previously collected links (resume support)
+# ----------------------------
+
+if os.path.exists(LINKS_FILE):
+    with open(LINKS_FILE, "r") as f:
+        photo_links = set(json.load(f))
+    print(f"Resumed with {len(photo_links)} previously collected links")
+else:
+    photo_links = set()
+
+
+def save_links():
+    with open(LINKS_FILE, "w") as f:
+        json.dump(list(photo_links), f)
+
+
 # ----------------------------
 # Scroll and Collect Photo Links
 # ----------------------------
 
-photo_links = set()
-
 same_height_count = 0
-
 last_height = 0
-
 scroll_round = 0
 
 print("\nScrolling deeply into Facebook photos...\n")
@@ -63,74 +79,57 @@ print("\nScrolling deeply into Facebook photos...\n")
 while True:
 
     scroll_round += 1
-
     print(f"\nScroll Round {scroll_round}")
 
-    # gradual scrolling
     for _ in range(20):
-
-        driver.execute_script(
-            "window.scrollBy(0, 1200);"
-        )
-
+        driver.execute_script("window.scrollBy(0, 1200);")
         time.sleep(1.5)
 
-    # extra wait for FB lazy loading
     time.sleep(5)
 
-    # collect links
-    anchors = driver.find_elements(By.TAG_NAME, "a")
+    # Collect all hrefs in one JS call - returns plain strings,
+    # so there is no WebElement handle that can go stale
+    try:
+        hrefs = driver.execute_script(
+            "return Array.from(document.querySelectorAll('a')).map(a => a.href);"
+        )
+    except Exception as e:
+        print(f"JS collection failed this round: {e}")
+        hrefs = []
 
     added_this_round = 0
 
-    for a in anchors:
-
-        href = a.get_attribute("href")
-
-        if (
-            href and
-            "fbid=" in href and
-            "facebook.com/photo" in href
-        ):
-
+    for href in hrefs:
+        if href and "fbid=" in href and "facebook.com/photo" in href:
             href = href.split("&")[0]
-
             if href not in photo_links:
-
                 photo_links.add(href)
                 added_this_round += 1
 
     print(f"Added this round: {added_this_round}")
     print(f"Total collected: {len(photo_links)}")
 
-    # get new height
-    new_height = driver.execute_script(
-        "return document.body.scrollHeight"
-    )
+    # Checkpoint every round so a crash never loses progress again
+    save_links()
 
+    new_height = driver.execute_script("return document.body.scrollHeight")
     print(f"Current height: {new_height}")
 
-    # Facebook often pauses height growth temporarily
     if new_height == last_height:
-
         same_height_count += 1
-
-        print(
-            f"No height increase "
-            f"({same_height_count}/10)"
-        )
-
+        print(f"No height increase ({same_height_count}/10)")
     else:
-
         same_height_count = 0
 
     last_height = new_height
 
-    # only stop after MANY stagnant checks
     if same_height_count >= 10:
-
         print("\nReached probable absolute end")
         break
+
+save_links()
+print(f"\nFinished scrolling. {len(photo_links)} total links saved to {LINKS_FILE}")
+
 # ----------------------------
 # Prepare Download Folder
 # ----------------------------
@@ -167,21 +166,24 @@ for idx, photo_url in enumerate(photo_links):
 
         time.sleep(4)
 
-        images = driver.find_elements(By.TAG_NAME, "img")
-
-        best_url = None
-
-        # Find highest quality image
-        for img in images:
-
-            src = img.get_attribute("src")
-
-            if src and "scontent" in src:
-
-                # choose longest URL (usually highest quality)
-                if not best_url or len(src) > len(best_url):
-
-                    best_url = src
+        # Find highest quality image via a single JS call - returns a
+        # plain string, so there is no WebElement handle that can go stale
+        try:
+            best_url = driver.execute_script("""
+                const imgs = Array.from(document.querySelectorAll('img'));
+                let best = null;
+                for (const img of imgs) {
+                    if (img.src && img.src.includes('scontent')) {
+                        if (!best || img.src.length > best.length) {
+                            best = img.src;
+                        }
+                    }
+                }
+                return best;
+            """)
+        except Exception as e:
+            print(f"Image extraction failed: {e}")
+            best_url = None
 
         if not best_url:
 
@@ -198,7 +200,7 @@ for idx, photo_url in enumerate(photo_links):
             with open(filepath, "wb") as f:
 
                 f.write(response.content)
-
+                downloaded_files.add(filename)
             print(f"Downloaded: {filename}")
 
         else:
