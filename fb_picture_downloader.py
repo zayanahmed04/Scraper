@@ -8,7 +8,8 @@ import time
 import os
 import json
 
-PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
+# PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
+PAGE_URL = "https://www.facebook.com/bssjp1/photos"
 
 # ----------------------------
 # Setup
@@ -35,7 +36,7 @@ print("Chrome launched")
 driver.get("https://facebook.com")
 
 print("Login manually")
-time.sleep(7)
+time.sleep(2)
 
 # ----------------------------
 # Open Photos Page
@@ -45,10 +46,10 @@ driver.get(PAGE_URL)
 
 print("Opened photos page")
 
-time.sleep(10)
+time.sleep(3)
 
 LINKS_FILE = "photo_links.json"
-
+### Photo_linkMain mei main campus ki pics k links hei
 # ----------------------------
 # Load previously collected links (resume support)
 # ----------------------------
@@ -70,73 +71,73 @@ def save_links():
 # Scroll and Collect Photo Links
 # ----------------------------
 
-same_height_count = 0
-last_height = 0
-scroll_round = 0
+# same_height_count = 0
+# last_height = 0
+# scroll_round = 0
 
-print("\nScrolling deeply into Facebook photos...\n")
+# print("\nScrolling deeply into Facebook photos...\n")
 
-while True:
+# while True:
 
-    scroll_round += 1
-    print(f"\nScroll Round {scroll_round}")
+#     scroll_round += 1
+#     print(f"\nScroll Round {scroll_round}")
 
-    for _ in range(20):
-        driver.execute_script("window.scrollBy(0, 1200);")
-        time.sleep(1.5)
+#     for _ in range(20):
+#         driver.execute_script("window.scrollBy(0, 1200);")
+#         time.sleep(1.5)
 
-    time.sleep(5)
+#     time.sleep(5)
 
-    # Collect all hrefs in one JS call - returns plain strings,
-    # so there is no WebElement handle that can go stale
-    try:
-        hrefs = driver.execute_script(
-            "return Array.from(document.querySelectorAll('a')).map(a => a.href);"
-        )
-    except Exception as e:
-        print(f"JS collection failed this round: {e}")
-        hrefs = []
+#     # Collect all hrefs in one JS call - returns plain strings,
+#     # so there is no WebElement handle that can go stale
+#     try:
+#         hrefs = driver.execute_script(
+#             "return Array.from(document.querySelectorAll('a')).map(a => a.href);"
+#         )
+#     except Exception as e:
+#         print(f"JS collection failed this round: {e}")
+#         hrefs = []
 
-    added_this_round = 0
+#     added_this_round = 0
 
-    for href in hrefs:
-        if href and "fbid=" in href and "facebook.com/photo" in href:
-            href = href.split("&")[0]
-            if href not in photo_links:
-                photo_links.add(href)
-                added_this_round += 1
+#     for href in hrefs:
+#         if href and "fbid=" in href and "facebook.com/photo" in href:
+#             href = href.split("&")[0]
+#             if href not in photo_links:
+#                 photo_links.add(href)
+#                 added_this_round += 1
 
-    print(f"Added this round: {added_this_round}")
-    print(f"Total collected: {len(photo_links)}")
+#     print(f"Added this round: {added_this_round}")
+#     print(f"Total collected: {len(photo_links)}")
 
-    # Checkpoint every round so a crash never loses progress again
-    save_links()
+#     # Checkpoint every round so a crash never loses progress again
+#     save_links()
 
-    new_height = driver.execute_script("return document.body.scrollHeight")
-    print(f"Current height: {new_height}")
+#     new_height = driver.execute_script("return document.body.scrollHeight")
+#     print(f"Current height: {new_height}")
 
-    if new_height == last_height:
-        same_height_count += 1
-        print(f"No height increase ({same_height_count}/10)")
-    else:
-        same_height_count = 0
+#     if new_height == last_height:
+#         same_height_count += 1
+#         print(f"No height increase ({same_height_count}/10)")
+#     else:
+#         same_height_count = 0
 
-    last_height = new_height
+#     last_height = new_height
 
-    if same_height_count >= 10:
-        print("\nReached probable absolute end")
-        break
+#     if same_height_count >= 10:
+#         print("\nReached probable absolute end")
+#         break
 
-save_links()
-print(f"\nFinished scrolling. {len(photo_links)} total links saved to {LINKS_FILE}")
+# save_links()
+# print(f"\nFinished scrolling. {len(photo_links)} total links saved to {LINKS_FILE}")
 
 # ----------------------------
 # Prepare Download Folder
 # ----------------------------
 
-os.makedirs("downloads", exist_ok=True)
+os.makedirs("downloads2014", exist_ok=True)
 
-downloaded_files = set(os.listdir("downloads"))
+downloaded_files = set(os.listdir("downloads2014"))
 
 print(f"\nStarting download of {len(photo_links)} photos...")
 
@@ -195,7 +196,7 @@ for idx, photo_url in enumerate(photo_links):
 
         if response.status_code == 200:
 
-            filepath = os.path.join("downloads", filename)
+            filepath = os.path.join("downloads2014", filename)
 
             with open(filepath, "wb") as f:
 
