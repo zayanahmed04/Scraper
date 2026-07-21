@@ -8,10 +8,11 @@ import time
 import os
 import json
 
-# PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
-PAGE_URL = "https://www.facebook.com/bssjkg2/photos"
-LINKS_FILE = "photo_links.json"
-DOWNLOADS = "downloadsAyesha"
+#PAGE_URL = "https://www.facebook.com/bssjauharcampus/photos"
+# PAGE_URL = "https://www.facebook.com/bssjkg2/photos"
+PAGE_URL = "https://www.facebook.com/groups/795174547328278/media"  #senior section private group
+LINKS_FILE = "D:/Scraper/photo_linksMain.json"
+DOWNLOADS = "D:/Scraper/downloads"
 ### Photo_linkMain mei main campus ki pics k links hei
 
 # ----------------------------
@@ -39,7 +40,7 @@ print("Chrome launched")
 driver.get("https://facebook.com")
 
 print("Login manually")
-
+#time.sleep(200)
 # ----------------------------
 # Open Photos Page
 # ----------------------------
