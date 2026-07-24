@@ -7,7 +7,7 @@ echo Starting scraper...
 call venv\Scripts\activate
 echo venv activated
 
-python -u "D:\Scraper\fb_picture_downloader.py"
+python -u "D:\Scraper\fb_reels_downloader.py"
 
 echo.
 echo Finished or stopped.
